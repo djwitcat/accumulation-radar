@@ -1,0 +1,6 @@
+.env.oi
+.env
+accumulation.db
+*.pyc
+__pycache__/
+*.log
