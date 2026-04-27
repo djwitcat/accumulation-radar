@@ -34,8 +34,7 @@ if env_file.exists():
                 os.environ.setdefault(k.strip(), v.strip())
 
 # === 配置 ===
-TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN", "")
-TG_CHAT_ID = os.getenv("TG_CHAT_ID", "")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 FAPI = "https://fapi.binance.com"
 DB_PATH = Path(__file__).parent / "accumulation.db"
 
@@ -461,46 +460,26 @@ def build_oi_alert_report(alerts, watchlist_coins):
     return "\n".join(lines)
 
 
-def send_telegram(text):
-    """发送TG消息"""
-    if not TG_BOT_TOKEN:
-        print("\n[TG] No token, stdout:\n")
+def send_webhook(text):
+    """发送 webhook 消息"""
+    if not WEBHOOK_URL:
+        print("\n[WEBHOOK] No URL, stdout:\n")
         print(text)
         return
-    
-    url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
-    
-    # 分段发送（TG限制4096字）
-    chunks = []
-    current = ""
-    for line in text.split("\n"):
-        if len(current) + len(line) + 1 > 3800:
-            chunks.append(current)
-            current = line
+
+    try:
+        resp = requests.post(
+            WEBHOOK_URL,
+            data=text.encode("utf-8"),
+            headers={"Markdown": "yes"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            print(f"[WEBHOOK] Sent ✓ ({len(text)} chars)")
         else:
-            current += "\n" + line if current else line
-    if current:
-        chunks.append(current)
-    
-    for chunk in chunks:
-        try:
-            resp = requests.post(url, json={
-                "chat_id": TG_CHAT_ID,
-                "text": chunk,
-                "parse_mode": "Markdown"
-            }, timeout=10)
-            if resp.status_code == 200:
-                print(f"[TG] Sent ✓ ({len(chunk)} chars)")
-            else:
-                # Markdown失败就用纯文本
-                resp2 = requests.post(url, json={
-                    "chat_id": TG_CHAT_ID,
-                    "text": chunk.replace("*", "").replace("_", ""),
-                }, timeout=10)
-                print(f"[TG] Sent plain ({'✓' if resp2.status_code == 200 else '✗'})")
-        except Exception as e:
-            print(f"[TG] Error: {e}")
-        time.sleep(0.5)
+            print(f"[WEBHOOK] Failed ({resp.status_code}): {resp.text[:200]}")
+    except Exception as e:
+        print(f"[WEBHOOK] Error: {e}")
 
 
 def save_watchlist(conn, results):
@@ -631,7 +610,7 @@ def main():
             save_watchlist(conn, results)
             report = build_pool_report(results)
             if report:
-                send_telegram(report)
+                send_webhook(report)
     
     if mode in ("full", "oi"):
         # === 综合扫描：OI + 费率 + 收筹 三维合一 ===
@@ -1049,7 +1028,7 @@ def main():
         lines.append("  🔥💤热度+收筹=最强预判 | 🔥⚡热度+OI=正在发生")
         
         report = "\n".join(lines)
-        send_telegram(report)
+        send_webhook(report)
     
     conn.close()
     print("\n✅ 完成")

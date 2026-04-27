@@ -70,13 +70,8 @@ pip install requests
 
 # 配置 Telegram 推送（可选）
 cp .env.example .env.oi
-# 编辑 .env.oi，填入你的 TG_BOT_TOKEN 和 TG_CHAT_ID
+# 编辑 .env.oi，填入你的 WEBHOOK_URL
 ```
-
-### 创建 Telegram Bot
-1. 找 [@BotFather](https://t.me/BotFather)，发 `/newbot`
-2. 获得 Bot Token
-3. 给 bot 发条消息，然后访问 `https://api.telegram.org/bot<TOKEN>/getUpdates` 获取你的 Chat ID
 
 ## 使用
 
